@@ -1,4 +1,4 @@
-export const commands = [
+export const commands = /** @type {const} */ ([
   { id: 'bold', label: 'Bold', text: 'B' },
   { id: 'italic', label: 'Italic', text: 'I' },
   { id: 'strike', label: 'Strikethrough', text: 'S' },
@@ -10,7 +10,7 @@ export const commands = [
   { id: 'quote', label: 'Blockquote', text: 'Quote' },
   { id: 'code', label: 'Code block', text: 'Code' },
   { id: 'table', label: 'Insert table', text: 'Table' },
-];
+]);
 
 /** @param {string} text */
 function hasStrikeMarkers(text) {

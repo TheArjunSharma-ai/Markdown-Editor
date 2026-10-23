@@ -24,6 +24,21 @@
         <button id="download" type="button">Download .md</button>
       </div>
     </div>
+    <details class="customization">
+      <summary>Customize editor appearance and toolbar</summary>
+      <p>Applies to the source/preview and inline editors below. Your Markdown is preserved.</p>
+      <fieldset class="actions" id="editor-visibility">
+        <legend>Visible sections</legend>
+        <label class="checkbox"><input id="show-header" type="checkbox" checked> Header</label>
+        <label class="checkbox"><input id="show-footer" type="checkbox" checked> Footer</label>
+        <label class="checkbox"><input id="show-toolbar" type="checkbox" checked> Toolbar</label>
+      </fieldset>
+      <fieldset class="actions" id="toolbar-actions">
+        <legend>Toolbar actions</legend>
+      </fieldset>
+      <p>Creation options (use with <code>create</code> or <code>createInline</code>):</p>
+      <pre><code id="customization-options"></code></pre>
+    </details>
     <div id="notes"></div>
     <p id="save-status" role="status">Demo only: changes are not saved automatically.</p>
     <section class="secondary">

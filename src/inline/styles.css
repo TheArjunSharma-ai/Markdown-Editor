@@ -19,5 +19,11 @@
 .md-inline .md-inline__fence { padding-left: 12px; padding-right: 12px; }
 .md-inline .md-inline__quote { border-left: 3px solid var(--md-accent); padding-left: 16px; color: var(--md-muted); }
 .md-inline__image img { max-width: 100%; max-height: 260px; height: auto; vertical-align: middle; }
+.md-inline__table { max-width: 100%; overflow-x: auto; margin: 8px 0; }
+.md-inline__table table { width: 100%; border-collapse: collapse; }
+.md-inline__table th, .md-inline__table td { padding: 8px 12px; border: 1px solid var(--md-border); }
+.md-inline__table th { background: var(--md-panel); font-weight: 700; }
+.md-inline__table a { color: var(--md-accent); }
+.md-inline__table img { max-width: 100%; height: auto; }
 .md-inline .cm-placeholder { color: var(--md-muted); }
 @media (max-width: 767px) { .md-inline .cm-content { padding: 16px; } }

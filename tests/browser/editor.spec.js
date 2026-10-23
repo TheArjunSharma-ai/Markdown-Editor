@@ -93,3 +93,40 @@ test('demo supports appearance, read-only, and Markdown download', async ({ page
   expect(download.suggestedFilename()).toBe('project-notes.md');
   expect(await download.failure()).toBeNull();
 });
+
+test('demo customizes both editors while preserving content and mode', async ({ page }) => {
+  await page.goto('/demo/');
+  const source = page.locator('#notes textarea');
+  await source.fill('# Keep this document');
+  const inline = page.locator('#inline-notes .cm-content');
+  await inline.fill('Keep this inline document');
+  await page.locator('#notes [data-mode="source"]').click();
+  await page.getByText('Customize editor appearance and toolbar', { exact: true }).click();
+  for (const name of ['Header', 'Footer', 'Toolbar']) {
+    await page.getByLabel(name, { exact: true }).uncheck();
+    for (const id of ['notes', 'inline-notes']) {
+      await expect(page.locator(`#${id} .md-editor__${name.toLowerCase()}`)).toBeHidden();
+    }
+  }
+  await expect(page.locator('#toolbar-actions input').first()).toBeDisabled();
+  await expect(source).toHaveValue('# Keep this document');
+  await expect(inline).toHaveText('Keep this inline document');
+  await expect(page.locator('#notes .md-editor')).toHaveAttribute('data-mode', 'source');
+  await expect(page.locator('#customization-options')).toContainText('"header": false');
+  await page.getByLabel('Toolbar', { exact: true }).check();
+  for (const checkbox of await page.locator('#toolbar-actions input').all()) {
+    await checkbox.uncheck();
+  }
+  for (const name of ['Bold', 'Italic', 'Strikethrough']) {
+    await page.locator('#toolbar-actions').getByLabel(name, { exact: true }).check();
+  }
+  for (const id of ['notes', 'inline-notes']) {
+    const buttons = page.locator(`#${id} .md-editor__toolbar button`);
+    await expect(buttons).toHaveCount(3);
+    expect(await buttons.evaluateAll((nodes) => nodes.map((node) => node.dataset.command)))
+      .toEqual(['bold', 'italic', 'strike']);
+  }
+  await page.getByLabel('Read only', { exact: true }).check();
+  await expect(page.locator('#notes [data-command="bold"]')).toBeDisabled();
+  await expect(page.locator('#inline-notes [data-command="bold"]')).toBeDisabled();
+});

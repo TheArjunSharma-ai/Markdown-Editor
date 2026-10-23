@@ -1,5 +1,6 @@
 import { syntaxTree } from '@codemirror/language';
-import { Decoration, ViewPlugin, WidgetType } from '@codemirror/view';
+import { StateEffect, StateField } from '@codemirror/state';
+import { Decoration, EditorView, ViewPlugin, WidgetType } from '@codemirror/view';
 import { renderMarkdown } from '../markdown/parser.js';
 
 class BulletWidget extends WidgetType {
@@ -27,6 +28,95 @@ class ImageWidget extends WidgetType {
   ignoreEvent() { return false; }
 }
 
+class TableWidget extends WidgetType {
+  /** @param {string} markdown @param {number} from @param {number[][]} cells */
+  constructor(markdown, from, cells) {
+    super();
+    this.markdown = markdown;
+    this.from = from;
+    this.cells = cells;
+  }
+  /** @param {TableWidget} other */
+  eq(other) { return this.markdown === other.markdown && this.from === other.from; }
+  /** @param {EditorView} view */
+  toDOM(view) {
+    const container = view.dom.ownerDocument.createElement('div');
+    container.className = 'md-inline__table';
+    container.innerHTML = renderMarkdown(this.markdown);
+    container.addEventListener('mousedown', (event) => {
+      if (event.button !== 0 || view.state.readOnly) return;
+      event.preventDefault();
+      const target = event.target;
+      const cell = target instanceof Element ? target.closest('th, td') : null;
+      const rows = Array.from(container.querySelectorAll('tr'));
+      const rowIndex = rows.findIndex((row) => cell && row.contains(cell));
+      const cellIndex = rowIndex < 0 || !cell ? -1 : Array.from(rows[rowIndex].children).indexOf(cell);
+      const anchor = this.cells[rowIndex]?.[cellIndex] ?? this.from;
+      view.dispatch({ selection: { anchor }, scrollIntoView: true });
+      view.focus();
+    });
+    return container;
+  }
+}
+
+/** @param {import('@codemirror/state').EditorState} state @param {boolean} focused @param {number} from @param {number} to */
+function tableActive(state, focused, from, to) {
+  return focused && !state.readOnly
+    && state.selection.ranges.some((range) => range.from <= to && range.to >= from);
+}
+
+/** @param {import('@codemirror/state').EditorState} state @param {boolean} focused */
+function tableDecorations(state, focused) {
+  /** @type {import('@codemirror/state').Range<Decoration>[]} */
+  const ranges = [];
+  syntaxTree(state).iterate({
+    enter(node) {
+      if (node.name !== 'Table') return;
+      const { from, to } = node;
+      if (!tableActive(state, focused, from, to)) {
+        const cells = [];
+        for (let row = node.node.firstChild; row; row = row.nextSibling) {
+          if (row.name === 'TableHeader' || row.name === 'TableRow') {
+            const positions = [];
+            let start = row.from;
+            for (const delimiter of row.getChildren('TableDelimiter')) {
+              if (delimiter.from > row.from) {
+                const text = state.doc.sliceString(start, delimiter.from);
+                positions.push(start + text.length - text.trimStart().length);
+              }
+              start = delimiter.to;
+            }
+            if (start < row.to) {
+              const text = state.doc.sliceString(start, row.to);
+              positions.push(start + text.length - text.trimStart().length);
+            }
+            cells.push(positions);
+          }
+        }
+        const widget = new TableWidget(state.doc.sliceString(from, to), from, cells);
+        ranges.push(Decoration.replace({ widget, block: true }).range(from, to));
+      }
+      return false;
+    },
+  });
+  return Decoration.set(ranges, true);
+}
+
+/** @type {import('@codemirror/state').StateEffectType<boolean>} */
+const previewFocus = StateEffect.define();
+const tables = StateField.define({
+  /** @param {import('@codemirror/state').EditorState} state */
+  create(state) { return { focused: false, decorations: tableDecorations(state, false) }; },
+  update(value, transaction) {
+    let focused = value.focused;
+    for (const effect of transaction.effects) {
+      if (effect.is(previewFocus)) focused = effect.value;
+    }
+    return { focused, decorations: tableDecorations(transaction.state, focused) };
+  },
+  provide: (field) => EditorView.decorations.from(field, (value) => value.decorations),
+});
+
 /** @param {import('@codemirror/view').EditorView} view */
 export function buildDecorations(view) {
   const { state } = view;
@@ -47,6 +137,7 @@ export function buildDecorations(view) {
     enter(node) {
       const { name, from, to } = node;
       const parent = node.node.parent;
+      if (name === 'Table' && !tableActive(state, view.hasFocus, from, to)) return false;
       if (/^ATXHeading[1-6]$/.test(name)) {
         ranges.push(Decoration.line({ class: `md-inline__heading md-inline__h${name.slice(-1)}` }).range(state.doc.lineAt(from).from));
       }
@@ -83,7 +174,7 @@ export function buildDecorations(view) {
   return Decoration.set(ranges, true);
 }
 
-export const livePreview = ViewPlugin.fromClass(class {
+const inlineDecorations = ViewPlugin.fromClass(class {
   /** @param {import('@codemirror/view').EditorView} view */
   constructor(view) { this.decorations = buildDecorations(view); }
   /** @param {import('@codemirror/view').ViewUpdate} update */
@@ -95,3 +186,12 @@ export const livePreview = ViewPlugin.fromClass(class {
     }
   }
 }, { decorations: (plugin) => plugin.decorations });
+
+export const livePreview = [
+  tables,
+  EditorView.domEventHandlers({
+    focus(_event, view) { view.dispatch({ effects: previewFocus.of(true) }); },
+    blur(_event, view) { view.dispatch({ effects: previewFocus.of(false) }); },
+  }),
+  inlineDecorations,
+];

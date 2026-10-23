@@ -1,5 +1,8 @@
+import { commands } from './commands.js';
+
 /** @typedef {'source' | 'preview' | 'split'} Mode */
 /** @typedef {'system' | 'light' | 'dark'} Theme */
+/** @typedef {typeof commands[number]['id'] | 'strikethrough'} ToolbarAction */
 /**
  * @typedef {object} EditorOptions
  * @property {string | HTMLElement} element
@@ -8,6 +11,10 @@
  * @property {boolean} [readOnly]
  * @property {string} [placeholder]
  * @property {Theme} [theme]
+ * @property {boolean} [header]
+ * @property {boolean} [footer]
+ * @property {boolean} [toolbar]
+ * @property {ToolbarAction[]} [toolbarActions]
  * @property {(markdown: string) => void} [onChange]
  * @property {() => void} [onFocus]
  * @property {() => void} [onBlur]
@@ -41,6 +48,23 @@ export function normalizeOptions(options) {
   const readOnly = options.readOnly === undefined ? false : options.readOnly;
   const placeholder = options.placeholder === undefined ? '' : options.placeholder;
   const theme = options.theme === undefined ? 'system' : options.theme;
+  const header = options.header === undefined ? true : options.header;
+  const footer = options.footer === undefined ? true : options.footer;
+  const toolbar = options.toolbar === undefined ? true : options.toolbar;
+  for (const [name, value] of Object.entries({ header, footer, toolbar })) {
+    if (typeof value !== 'boolean') throw new TypeError(`${name} must be a boolean`);
+  }
+  const actions = options.toolbarActions === undefined ? commands.map((command) => command.id) : options.toolbarActions;
+  if (!Array.isArray(actions)) throw new TypeError('toolbarActions must be an array of action names');
+  const seen = new Set();
+  const toolbarCommands = Array.from(actions, (action) => {
+    const id = action === 'strikethrough' ? 'strike' : action;
+    const command = commands.find((command) => command.id === id);
+    if (!command) throw new TypeError(`Unknown toolbar action: ${String(action)}`);
+    if (seen.has(id)) throw new TypeError(`Duplicate toolbar action: ${action}`);
+    seen.add(id);
+    return command;
+  });
   validateString(value, 'value');
   validateString(placeholder, 'placeholder');
   validateMode(mode);
@@ -51,5 +75,5 @@ export function normalizeOptions(options) {
       throw new TypeError(`${name} must be a function`);
     }
   }
-  return { ...options, element, value, mode, readOnly, placeholder, theme };
+  return { ...options, element, value, mode, readOnly, placeholder, theme, header, footer, toolbar, toolbarCommands };
 }

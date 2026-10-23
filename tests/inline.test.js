@@ -159,3 +159,33 @@ it('uses LF line endings consistently for inline edits and callbacks', () => {
   expect(editor.getValue()).toBe('x\ny');
   expect(onChange).toHaveBeenCalledExactlyOnceWith('x\ny');
 });
+
+it('renders inactive tables and reveals their Markdown only while editing', () => {
+  const value = '| Name | Status |\n| --- | ---: |\n| **Notes** | Ready |\n\nOutside';
+  const onChange = vi.fn();
+  const editor = create({ value, onChange });
+  expect(host.querySelectorAll('.md-inline__table th')).toHaveLength(2);
+  expect(host.querySelector('.md-inline__table strong').textContent).toBe('Notes');
+  editor.focus();
+  expect(host.querySelector('.md-inline__table')).toBeNull();
+  expect(host.querySelector('.cm-content').textContent).toContain('| Name | Status |');
+  editor.setReadOnly(true);
+  expect(host.querySelector('.md-inline__table table')).not.toBeNull();
+  editor.setValue('| New | Table |\n| --- | --- |\n| Updated | Cell |');
+  expect(host.querySelector('.md-inline__table td').textContent).toBe('Updated');
+  expect(editor.getHTML()).toContain('<table>');
+  expect(onChange).toHaveBeenCalledExactlyOnceWith(editor.getValue());
+  editor.setReadOnly(false);
+  expect(host.querySelector('.md-inline__table')).toBeNull();
+  expect(editor.getValue()).toContain('| Updated | Cell |');
+});
+
+it('sanitizes table previews and leaves fenced tables as code', () => {
+  const editor = create({
+    value: '| Name | Link |\n| --- | --- |\n| <script>alert(1)</script> | [bad](javascript:alert(1)) |',
+  });
+  expect(host.querySelector('.md-inline__table table')).not.toBeNull();
+  expect(host.querySelector('script, [onerror], a[href^="javascript:"]')).toBeNull();
+  editor.setValue('```\n| Name | Link |\n| --- | --- |\n| Value | Value |\n```');
+  expect(host.querySelector('.md-inline__table')).toBeNull();
+});

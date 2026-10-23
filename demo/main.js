@@ -30,10 +30,43 @@ Try **bold**, *italic*, ~~strikethrough~~, or [learn Markdown](https://www.markd
 
 let value = initial;
 let editor;
+const actionChoices = [
+  ['bold', 'Bold'], ['italic', 'Italic'], ['strikethrough', 'Strikethrough'],
+  ['heading', 'Heading'], ['link', 'Link'], ['image', 'Image'],
+  ['bullet', 'Bulleted list'], ['ordered', 'Numbered list'],
+  ['quote', 'Quote'], ['code', 'Code block'], ['table', 'Table'],
+];
+const actionControls = document.querySelector('#toolbar-actions');
+for (const [action, title] of actionChoices) {
+  const label = document.createElement('label');
+  label.className = 'checkbox';
+  const input = document.createElement('input');
+  input.type = 'checkbox';
+  input.value = action;
+  input.checked = true;
+  label.append(input, ` ${title}`);
+  actionControls.append(label);
+}
+function customizationOptions() {
+  return {
+    header: document.querySelector('#show-header').checked,
+    footer: document.querySelector('#show-footer').checked,
+    toolbar: document.querySelector('#show-toolbar').checked,
+    toolbarActions: Array.from(actionControls.querySelectorAll('input:checked'), (input) => input.value),
+  };
+}
+function showCustomization() {
+  const options = customizationOptions();
+  document.querySelector('#customization-options').textContent = JSON.stringify(options, null, 2);
+  actionControls.disabled = !options.toolbar;
+}
+let mode = 'split';
 function mount() {
   editor = MarkdownEditor.create({
     element: '#notes',
     value,
+    mode,
+    ...customizationOptions(),
     theme: document.querySelector('#theme').value,
     readOnly: document.querySelector('#read-only').checked,
     placeholder: 'Write your next idea...',
@@ -50,6 +83,7 @@ function mountInline() {
   inlineEditor = MarkdownEditor.createInline({
     element: '#inline-notes',
     value: inlineValue,
+    ...customizationOptions(),
     theme: document.querySelector('#theme').value,
     readOnly: document.querySelector('#read-only').checked,
     placeholder: 'Start writing Markdown...',
@@ -66,12 +100,20 @@ MarkdownEditor.create({
   mode: 'preview',
   readOnly: true,
 });
-document.querySelector('#theme').addEventListener('change', () => {
+function remount() {
+  mode = document.querySelector('#notes .md-editor').dataset.mode;
+  value = editor.getValue();
+  inlineValue = inlineEditor.getValue();
   editor.destroy();
   inlineEditor.destroy();
   mount();
   mountInline();
-});
+  showCustomization();
+}
+showCustomization();
+document.querySelector('#theme').addEventListener('change', remount);
+document.querySelector('#editor-visibility').addEventListener('change', remount);
+actionControls.addEventListener('change', remount);
 document.querySelector('#read-only').addEventListener('change', (event) => {
   editor.setReadOnly(event.target.checked);
   inlineEditor.setReadOnly(event.target.checked);

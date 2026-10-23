@@ -15,6 +15,10 @@ p { color: #526077; line-height: 1.6; }
 .actions select, .actions button { min-height: 44px; padding: 8px 12px; border-radius: 7px; border: 1px solid #aebdd2; font: inherit; color: inherit; background: #fff; }
 .actions button { background: #2458bb; color: white; cursor: pointer; border-color: #2458bb; }
 .checkbox { min-height: 44px; }
+.customization { margin-bottom: 20px; padding: 16px; border: 1px solid #aebdd2; border-radius: 8px; }
+.customization summary { cursor: pointer; font-weight: 600; min-height: 44px; }
+.customization fieldset { margin: 12px 0; padding: 8px 12px; border: 1px solid #aebdd2; border-radius: 6px; }
+.customization pre { overflow-x: auto; max-width: 100%; }
 input { width: 18px; height: 18px; }
 #save-status { font-size: 12px; }
 .secondary { margin-top: 48px; }

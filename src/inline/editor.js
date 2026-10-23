@@ -5,7 +5,7 @@ import { markdown, markdownKeymap } from '@codemirror/lang-markdown';
 import { GFM } from '@lezer/markdown';
 import { normalizeOptions, validateString, validateReadOnly } from '../core/defaults.js';
 import { assertHostAvailable, reserveHost, releaseHost } from '../core/hosts.js';
-import { commands, formatSelection } from '../core/commands.js';
+import { formatSelection } from '../core/commands.js';
 import { renderMarkdown } from '../markdown/parser.js';
 import { livePreview } from './decorations.js';
 
@@ -23,6 +23,7 @@ export function createInline(options) {
   root.setAttribute('aria-label', 'Inline live Markdown editor');
   const header = doc.createElement('header');
   header.className = 'md-editor__header';
+  header.hidden = !normalized.header;
   const title = doc.createElement('strong');
   title.textContent = 'Inline live editor';
   const hint = doc.createElement('span');
@@ -31,11 +32,13 @@ export function createInline(options) {
   header.append(title, hint);
   const toolbar = doc.createElement('div');
   toolbar.className = 'md-editor__toolbar';
+  toolbar.hidden = !normalized.toolbar || normalized.toolbarCommands.length === 0;
   toolbar.setAttribute('role', 'group');
   toolbar.setAttribute('aria-label', 'Inline formatting');
   const surface = doc.createElement('div');
   const footer = doc.createElement('footer');
   footer.className = 'md-editor__footer';
+  footer.hidden = !normalized.footer;
   const count = doc.createElement('span');
   const status = doc.createElement('span');
   status.setAttribute('role', 'status');
@@ -90,12 +93,13 @@ export function createInline(options) {
       ],
     }),
   });
-  for (const command of commands) {
+  for (const command of normalized.toolbarCommands) {
     const button = doc.createElement('button');
     button.type = 'button';
     button.textContent = command.text;
     button.setAttribute('aria-label', command.label);
     button.title = command.label;
+    button.dataset.command = command.id;
     button.disabled = readOnly;
     const click = () => { format(view, command.id); };
     button.addEventListener('click', click);

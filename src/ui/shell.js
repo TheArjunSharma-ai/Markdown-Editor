@@ -1,5 +1,3 @@
-import { commands } from '../core/commands.js';
-
 let nextId = 0;
 
 /** @param {ReturnType<import('../core/defaults.js').normalizeOptions>} options */
@@ -17,6 +15,7 @@ export function createShell(options) {
   root.dataset.theme = options.theme;
   root.setAttribute('aria-label', 'Markdown editor');
   const header = node('header', 'md-editor__header');
+  header.hidden = !options.header;
   header.append(node('strong', '', 'Markdown Editor'));
   const modes = node('div', 'md-editor__modes');
   modes.setAttribute('role', 'group');
@@ -31,9 +30,10 @@ export function createShell(options) {
   }
   header.append(modes);
   const toolbar = node('div', 'md-editor__toolbar');
+  toolbar.hidden = !options.toolbar || options.toolbarCommands.length === 0;
   toolbar.setAttribute('role', 'group');
   toolbar.setAttribute('aria-label', 'Formatting');
-  const commandButtons = commands.map((command) => {
+  const commandButtons = options.toolbarCommands.map((command) => {
     const button = node('button', '', command.text);
     button.type = 'button';
     button.setAttribute('aria-label', command.label);
@@ -61,6 +61,7 @@ export function createShell(options) {
   previewPanel.append(previewLabel, preview);
   body.append(sourcePanel, previewPanel);
   const footer = node('footer', 'md-editor__footer');
+  footer.hidden = !options.footer;
   const count = node('span');
   const status = node('span', '', 'Preview ready');
   status.setAttribute('role', 'status');

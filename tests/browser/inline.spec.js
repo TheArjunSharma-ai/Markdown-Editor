@@ -118,3 +118,64 @@ test('strikethrough toggles and displays a line through text on active and inact
   await expect(decorated).toHaveText('remove this');
   expect(await decorated.evaluate((node) => getComputedStyle(node).textDecorationLine)).toContain('line-through');
 });
+
+test('table previews support cell editing, selection, undo, and read-only', async ({ page }, testInfo) => {
+  const mod = testInfo.project.name === 'mobile-webkit' ? 'Meta' : 'ControlOrMeta';
+  const value = '| Name | Status |\n| --- | ---: |\n| **Notes** | Ready |\n\nOutside';
+  await page.evaluate((value) => window.inlineEditor.setValue(value), value);
+  await page.locator('#outside').click();
+  const table = page.locator('#inline .md-inline__table table');
+  await expect(table).toBeVisible();
+  await expect(table.locator('th')).toHaveText(['Name', 'Status']);
+  await expect(table.locator('td')).toHaveText(['Notes', 'Ready']);
+  await table.getByRole('cell', { name: 'Ready', exact: true }).click();
+  await expect(table).toHaveCount(0);
+  await expect(page.locator('#inline .cm-content')).toContainText('| **Notes** | Ready |');
+  await page.keyboard.type('Now ');
+  expect(await page.evaluate(() => window.inlineEditor.getValue())).toContain('| **Notes** | Now Ready |');
+  await page.keyboard.press(`${mod}+z`);
+  expect(await page.evaluate(() => window.inlineEditor.getValue())).toBe(value);
+  await page.keyboard.press(`${mod}+End`);
+  await expect(table).toBeVisible();
+  await page.keyboard.press(`${mod}+a`);
+  await expect(table).toHaveCount(0);
+  await page.locator('#outside').click();
+  await expect(table).toBeVisible();
+  await page.evaluate(() => window.inlineEditor.setReadOnly(true));
+  await table.getByRole('cell', { name: 'Ready', exact: true }).click();
+  await expect(table).toBeVisible();
+  expect(await page.evaluate(() => window.inlineEditor.getValue())).toBe(value);
+});
+
+test('table toolbar inserts a table that renders on blur in the demo', async ({ page }) => {
+  await page.goto('/demo/');
+  const content = page.locator('#inline-notes .cm-content');
+  await content.fill('');
+  await page.locator('#inline-notes').getByRole('button', { name: 'Insert table', exact: true }).click();
+  await expect(content).toContainText('| Column 1 | Column 2 |');
+  await page.locator('#download-inline').focus();
+  const table = page.locator('#inline-notes .md-inline__table table');
+  await expect(table).toBeVisible();
+  await expect(table.locator('th')).toHaveText(['Column 1', 'Column 2']);
+  await expect(table.locator('td')).toHaveText(['Value', 'Value']);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test('table cell editing handles empty cells and escaped pipes', async ({ page }) => {
+  const value = '| Empty | Status | Pipe |\n| --- | --- | --- |\n|  | Ready | a\\|b |\n\nOutside';
+  await page.evaluate((value) => window.inlineEditor.setValue(value), value);
+  await page.locator('#outside').click();
+  const table = page.locator('#inline .md-inline__table table');
+  await expect(table.locator('td')).toHaveText(['', 'Ready', 'a|b']);
+  await table.getByRole('cell', { name: 'Ready', exact: true }).click();
+  await page.keyboard.type('Now ');
+  expect(await page.evaluate(() => window.inlineEditor.getValue())).toContain('|  | Now Ready | a\\|b |');
+  await page.locator('#outside').click();
+  await table.getByRole('cell', { name: 'a|b', exact: true }).click();
+  await page.keyboard.type('Pipe ');
+  expect(await page.evaluate(() => window.inlineEditor.getValue())).toContain('|  | Now Ready | Pipe a\\|b |');
+  await page.locator('#outside').click();
+  await table.locator('td').first().click();
+  await page.keyboard.type('Filled ');
+  expect(await page.evaluate(() => window.inlineEditor.getValue())).toContain('|  Filled | Now Ready | Pipe a\\|b |');
+});

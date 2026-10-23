@@ -50,6 +50,20 @@ npm run preview
 
 Open **http://127.0.0.1:4173/demo/**. Use HTTP rather than opening HTML directly from disk. Both servers bind to loopback and fail if their port is occupied; do not terminate unrelated processes to free a port. Production hosting belongs to the embedding application.
 
+## Publish only the demo to GitHub Pages
+
+The Pages workflow builds and deploys only the standalone demo, using `demo/index.html` as its entry point:
+
+```powershell
+npm run build:demo
+```
+
+This builds the library first, then bundles the demo into `pages/index.html` and `pages/assets/`. Relative asset URLs support both repository Pages paths and custom domains. Only `pages/` is uploaded; source files, tests, fixtures, and the full `site/` preview directory are not published.
+
+In repository **Settings > Pages**, select **GitHub Actions** as the source. Push to `main` or manually run **Publish GitHub Pages**. The demo opens directly at **https://thearjunsharma-ai.github.io/Markdown-Editor/**, without `/demo/`.
+
+The existing `npm run build`, development server, and browser-test preview still use their original directory layout.
+
 ## Embed in plain HTML or ASP.NET
 
 Copy the three files in `dist` to your application's static assets directory, for example ASP.NET's `wwwroot/assets`. Include the CSS and classic bundle, then load a separate host initialization script:
@@ -99,11 +113,35 @@ The library does not implement authentication, network requests, storage, upload
 | `readOnly` | `false` | Boolean; host-driven updates remain allowed |
 | `placeholder` | `""` | Textarea placeholder string |
 | `theme` | `"system"` | `"light"`, `"dark"`, or system color preference |
+| `header` | `true` | Show the editor heading and mode buttons (inline: title and hint) |
+| `footer` | `true` | Show character count and status |
+| `toolbar` | `true` | Show the formatting toolbar |
+| `toolbarActions` | All built-in actions | Ordered array of action names; `[]` hides the empty toolbar |
 | `onChange` | Absent | Callback receiving the new Markdown string |
 | `onFocus` | Absent | Callback when focus enters the whole editor |
 | `onBlur` | Absent | Callback when focus leaves the whole editor |
 
 Invalid arguments throw descriptive errors. Invalid selector syntax throws the browser's selector error. Duplicate attachment to one host is rejected. Optional properties must be omitted or `undefined` to use defaults; `null` is not a valid value.
+
+### Customize the editor
+
+Both `create` and `createInline` support these creation options:
+
+```javascript
+const editor = MarkdownEditor.create({
+  element: '#notes',
+  header: false,
+  footer: false,
+  toolbar: true,
+  toolbarActions: ['bold', 'italic', 'strikethrough'],
+});
+```
+
+Set `toolbar: false` to hide the toolbar regardless of the selected actions. Available action names are `bold`, `italic`, `strikethrough` (or its existing alias `strike`), `heading`, `link`, `image`, `bullet`, `ordered`, `quote`, `code`, and `table`. Buttons follow the supplied array order. Unknown, duplicate, or non-string action names throw, including when the toolbar is hidden. Visibility options require booleans.
+
+These options customize the UI, not editing permissions: keyboard shortcuts remain available while editable, and `setMode()` still works with a hidden header. Use `readOnly` to prevent user edits. Hiding the footer also hides its status messages; rendering errors still propagate as documented.
+
+Open **Customize editor appearance and toolbar** in the demo to toggle sections, select individual actions, and view the corresponding options. Demo controls recreate both editable editors while preserving their Markdown, the source editor's mode, theme, and read-only setting; selection and undo history reset on recreation. The separate read-only example is unaffected.
 
 ### Instance methods
 
@@ -157,11 +195,11 @@ inline.destroy();
 
 `createInline` is available both on the classic-script `MarkdownEditor` facade and as a named ES module export. It accepts the same creation options **except `mode`** and exposes the same methods **except `setMode`**. One host may contain only one editor of either type. Read-only mode hides markers even on the selected line, but still permits host updates and copying.
 
-The inline editor uses CodeMirror 6 with a Markdown syntax tree rather than converting edited HTML back into Markdown. Headings, emphasis, strikethrough, links, inline code, bullets, quotes, code fences, and images receive live-preview styling. Images use the same sanitized rendering and URL policy as the existing editor; click an image to reveal its source. Link labels are styled, not navigable anchors, so clicking them edits rather than leaving the document.
+The inline editor uses CodeMirror 6 with a Markdown syntax tree rather than converting edited HTML back into Markdown. Headings, emphasis, strikethrough, links, inline code, bullets, quotes, code fences, images, and tables receive live-preview styling. Images and tables use the same sanitized rendering and URL policy as the existing editor; click an image to reveal its source. Inactive tables display as formatted, horizontally scrollable tables. Click a table cell to reveal the table's Markdown and place the cursor in that cell; move the selection outside the table or blur the editor to restore its preview. Read-only tables stay formatted. Link labels outside table previews are styled, not navigable anchors, so clicking them edits rather than leaving the document.
 
 Normal selection, multiline editing/paste, IME input, Ctrl/Cmd+B/I, and undo/redo are supplied by the editing engine. Formatting buttons participate in inline undo history. CodeMirror selects Cmd shortcuts on Apple/iOS platforms and Ctrl on Windows/Linux. Inline values normalize incoming line endings to LF; the original source editor's exact-value contract is unchanged.
 
-This is a live Markdown surface, **not a full WYSIWYG HTML editor**. Tables, setext headings, reference links, and other advanced block syntax may remain visible as Markdown rather than matching the separate HTML preview exactly. There is no synchronization between demo documents; each has its own download. Appearance and read-only demo controls apply to both editable documents.
+This is a live Markdown surface, **not a full WYSIWYG HTML editor**. Tables are edited as Markdown, not through spreadsheet-style cell controls. Setext headings, reference links, and other advanced block syntax may remain visible as Markdown rather than matching the separate HTML preview exactly. There is no synchronization between demo documents; each has its own download. Appearance and read-only demo controls apply to both editable documents.
 
 The added engine increases bundle size and injects its editor layout styles at runtime. Hosts with a strict style CSP need to evaluate the CodeMirror style policy/nonces before integration. Real-device keyboard and screen-reader qualification remain pending.
 
