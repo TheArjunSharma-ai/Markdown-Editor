@@ -30,7 +30,7 @@ const zf = [
   { id: "heading", label: "Heading", text: "H" },
   { id: "link", label: "Insert link", text: "Link" },
   { id: "image", label: "Insert image", text: "Image" },
-  { id: "bullet", label: "Bulleted list", text: "List" },
+  { id: "bullet", label: "Bulleted list", text: "* List" },
   { id: "ordered", label: "Numbered list", text: "1. List" },
   { id: "quote", label: "Blockquote", text: "Quote" },
   { id: "code", label: "Code block", text: "Code" },
