@@ -1,4 +1,4 @@
-import { MarkdownEditor } from '/dist/markdown-editor.es.js';
+import { MarkdownEditor } from '../dist/markdown-editor.es.js';
 
 const initial = `# A little clarity goes a long way
 
